@@ -21,6 +21,7 @@ from typing import Dict, Optional, Type
 
 from .agent import ConversimpleAgent
 from .connection import WebSocketConnection
+from .config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -155,12 +156,12 @@ class ConversimpleDispatcher:
     def __init__(
         self,
         api_key: str,
-        platform_url: str = "ws://localhost:4000/sdk/websocket",
+        platform_url: Optional[str] = None,
         search_path: Optional[Path] = None,
         customer_id: Optional[str] = None,
     ):
         self.api_key = api_key
-        self.platform_url = platform_url
+        self.platform_url = platform_url or Config.PLATFORM_URL
         self.customer_id = customer_id
         self.search_path = search_path or Path.cwd()
 

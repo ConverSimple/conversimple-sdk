@@ -50,6 +50,96 @@ python -m conversimple.dispatcher \
 
 The dispatcher keeps a single control-plane connection, listens for `conversation_ready` events, and spawns a dedicated `ConversimpleAgent` for each active conversation. This applies even if you only have one agent—the dispatcher guarantees safe concurrency and simplifies redeployments.
 
+## Platform API Client
+
+Programmatically manage agents and deployments on the platform using the `PlatformClient`:
+
+### Create an Agent
+
+```python
+from conversimple import PlatformClient
+
+# Uses Config.API_ENDPOINT by default (set via CONVERSIMPLE_API_ENDPOINT env var)
+client = PlatformClient(api_key="your-api-key")
+
+# Create a new agent
+agent = client.agents.create_agent(
+    name="Support Bot",
+    description="Handles customer support queries"
+)
+
+print(f"Created agent: {agent.id}")
+```
+
+### List Agents
+
+```python
+# List all agents
+agents, meta = client.agents.list_agents(page=1, per_page=20)
+
+# Filter by status
+draft_agents, meta = client.agents.list_agents(status="draft")
+
+# Search by name
+found_agents, meta = client.agents.list_agents(search="support")
+
+for agent in agents:
+    print(f"{agent.name} ({agent.status}) - v{agent.version}")
+```
+
+### Publish an Agent
+
+```python
+# Get agent
+agent = client.agents.get_agent("agent-id")
+
+# Publish to production
+published = client.agents.publish_agent("agent-id")
+
+print(f"Agent published: {published.status}")
+```
+
+### Create a Deployment
+
+```python
+# Create deployment for a widget
+deployment = client.deployments.create_deployment(
+    name="Support Widget",
+    agent_id="agent-id",
+    channel="widget",
+    channel_config={
+        "widget_position": "bottom-right"
+    },
+    greeting_message="How can we help?"
+)
+
+print(f"Created deployment: {deployment.id}")
+```
+
+### Activate/Deactivate Deployments
+
+```python
+# Activate deployment
+active = client.deployments.activate_deployment("deployment-id")
+
+# Deactivate deployment
+inactive = client.deployments.deactivate_deployment("deployment-id")
+```
+
+### Check API Key Usage
+
+```python
+# Get API key information
+key_info = client.api_keys.get_api_key_info()
+print(f"Status: {key_info.status}")
+print(f"Last 4: {key_info.last_4_chars}")
+
+# Get usage statistics
+usage = client.api_keys.get_api_key_usage()
+print(f"Requests (24h): {usage.requests_24h}")
+print(f"Rate limit: {usage.rate_limit}")
+```
+
 ## Core Concepts
 
 ### Dispatcher-Orchestrated Sessions
@@ -128,13 +218,112 @@ class MyAgent(ConversimpleAgent):
 
 ## Configuration
 
+The SDK provides centralized configuration through the `Config` class with full environment variable support. All settings can be overridden via environment variables.
+
+### Using the Config Class
+
+```python
+from conversimple import Config
+
+# Read current configuration
+print(Config.API_ENDPOINT)      # API endpoint from env var or default
+print(Config.PLATFORM_URL)      # WebSocket URL from env var or default
+print(Config.API_TIMEOUT)       # 30 (seconds)
+print(Config.VERBOSE)           # False
+
+# Update configuration at runtime
+Config.update(
+    API_ENDPOINT="http://api.example.com",
+    VERBOSE=True
+)
+```
+
 ### Environment Variables
 
+Configure the SDK using environment variables:
+
 ```bash
+# Platform URLs
+export CONVERSIMPLE_API_ENDPOINT="http://api.example.com"
+export CONVERSIMPLE_PLATFORM_URL="ws://api.example.com/sdk/websocket"
+
+# Authentication
 export CONVERSIMPLE_API_KEY="your-api-key"
 export CONVERSIMPLE_CUSTOMER_ID="your-customer-id"
-export CONVERSIMPLE_PLATFORM_URL="ws://localhost:4000/sdk/websocket"
+
+# Client Configuration
+export CONVERSIMPLE_API_TIMEOUT="30"
+export CONVERSIMPLE_VERBOSE="true"
+
+# Logging
 export CONVERSIMPLE_LOG_LEVEL="INFO"
+
+# Connection Settings
+export CONVERSIMPLE_HEARTBEAT_INTERVAL="30"
+export CONVERSIMPLE_RECONNECT_BACKOFF="2.0"
+export CONVERSIMPLE_MAX_BACKOFF="300.0"
+export CONVERSIMPLE_ENABLE_CIRCUIT_BREAKER="true"
+```
+
+### Configuration Reference
+
+**Platform URLs:**
+- `CONVERSIMPLE_API_ENDPOINT` - Platform API endpoint
+- `CONVERSIMPLE_PLATFORM_URL` - Platform WebSocket URL
+
+**Authentication:**
+- `CONVERSIMPLE_API_KEY` - API key for platform communication
+- `CONVERSIMPLE_CUSTOMER_ID` - Customer identifier (optional)
+
+**Client Settings:**
+- `CONVERSIMPLE_API_TIMEOUT` (default: `30`) - HTTP request timeout in seconds
+- `CONVERSIMPLE_VERBOSE` (default: `false`) - Enable verbose logging
+- `CONVERSIMPLE_LOG_LEVEL` (default: `INFO`) - Log level (DEBUG, INFO, WARNING, ERROR)
+
+**Connection Resilience:**
+- `CONVERSIMPLE_HEARTBEAT_INTERVAL` (default: `30`) - WebSocket heartbeat interval in seconds
+- `CONVERSIMPLE_RECONNECT_BACKOFF` (default: `2.0`) - Exponential backoff multiplier
+- `CONVERSIMPLE_MAX_BACKOFF` (default: `300`) - Maximum backoff time in seconds
+- `CONVERSIMPLE_ENABLE_CIRCUIT_BREAKER` (default: `true`) - Enable circuit breaker for permanent failures
+
+### Configuration Priority
+
+Configuration is loaded in this order (first match wins):
+
+1. **Runtime updates** via `Config.update()`
+2. **Environment variables**
+3. **Default values** in `Config` class
+
+### Configuration Examples
+
+**Remote Platform Configuration:**
+```bash
+export CONVERSIMPLE_API_ENDPOINT="https://api.conversimple.com"
+export CONVERSIMPLE_PLATFORM_URL="wss://api.conversimple.com/sdk/websocket"
+export CONVERSIMPLE_API_KEY="prod-api-key"
+export CONVERSIMPLE_ENABLE_CIRCUIT_BREAKER="true"
+```
+
+**Custom Runtime Configuration:**
+```python
+from conversimple import Config, PlatformClient, ConversimpleAgent
+
+# Update configuration for this session
+Config.update(
+    API_ENDPOINT="http://api.example.com",
+    PLATFORM_URL="ws://api.example.com/sdk/websocket",
+    VERBOSE=True
+)
+
+# All subsequent clients use the updated config
+client = PlatformClient(api_key="your-api-key")
+agent = ConversimpleAgent(api_key="your-api-key")
+
+# Or override for specific client instances
+agent = ConversimpleAgent(
+    api_key="your-api-key",
+    platform_url="ws://other-server.com/sdk/websocket"  # Override config
+)
 ```
 
 ### Basic Configuration
@@ -190,7 +379,7 @@ agent = ConversimpleAgent(
 # Good for testing - fails quickly
 agent = ConversimpleAgent(
     api_key="test-key",
-    platform_url="ws://localhost:4000/sdk/websocket",
+    # Uses Config.PLATFORM_URL by default (set via CONVERSIMPLE_PLATFORM_URL env var)
     max_reconnect_attempts=5,         # Only 5 attempts
     reconnect_backoff=1.5,            # Faster backoff
     max_backoff=30,                   # Max 30 seconds between retries
@@ -257,7 +446,7 @@ Main agent class for platform integration.
 ConversimpleAgent(
     api_key: str,
     customer_id: Optional[str] = None,
-    platform_url: str = "ws://localhost:4000/sdk/websocket",
+    platform_url: Optional[str] = None,  # Defaults to Config.PLATFORM_URL
     max_reconnect_attempts: Optional[int] = None,
     reconnect_backoff: float = 2.0,
     max_backoff: float = 300.0,
@@ -297,7 +486,7 @@ def my_tool(self, param1: str, param2: int = 10) -> dict:
     return {"result": "success"}
 ```
 
-#### @tool_async(description)  
+#### @tool_async(description)
 Register asynchronous tool function.
 
 ```python
@@ -305,6 +494,77 @@ Register asynchronous tool function.
 async def my_async_tool(self, param: str) -> dict:
     await asyncio.sleep(0.1)  # Async operation
     return {"result": "success"}
+```
+
+### PlatformClient
+
+HTTP client for managing agents and deployments on the platform.
+
+#### Constructor
+
+```python
+PlatformClient(
+    api_key: str,
+    api_endpoint: Optional[str] = None,  # Defaults to Config.API_ENDPOINT
+    timeout: int = 30,
+    verbose: bool = False
+)
+```
+
+**Parameters:**
+- `api_key` (str): API key for authentication
+- `api_endpoint` (str): Platform API endpoint URL
+- `timeout` (int): Request timeout in seconds (default: 30)
+- `verbose` (bool): Enable verbose logging (default: False)
+
+#### Endpoints
+
+**Agents** (`client.agents`):
+- `list_agents(page, per_page, status, search)` - List agents with pagination and filtering
+- `create_agent(name, description, agent_config)` - Create new agent
+- `get_agent(agent_id)` - Get agent details
+- `update_agent(agent_id, name, description, status)` - Update agent
+- `delete_agent(agent_id)` - Delete agent
+- `publish_agent(agent_id)` - Publish agent to production
+- `get_agent_spec(agent_id)` - Get agent specification
+
+**Deployments** (`client.deployments`):
+- `list_deployments(page, per_page, agent_id, status, environment)` - List deployments
+- `create_deployment(name, agent_id, channel, environment, channel_config)` - Create deployment
+- `get_deployment(deployment_id)` - Get deployment details
+- `update_deployment(deployment_id, name, environment)` - Update deployment
+- `delete_deployment(deployment_id)` - Delete deployment
+- `activate_deployment(deployment_id)` - Activate deployment
+- `deactivate_deployment(deployment_id)` - Deactivate deployment
+
+**API Keys** (`client.api_keys`):
+- `get_api_key_info()` - Get API key information
+- `rotate_api_key()` - Rotate API key
+- `get_api_key_usage()` - Get usage statistics
+
+#### Error Handling
+
+The PlatformClient raises specific exceptions for different error cases:
+
+```python
+from conversimple import (
+    APIError,           # Base API error
+    ValidationError,    # 422 validation error
+    NotFoundError,      # 404 not found
+    UnauthorizedError,  # 401 authentication failed
+    ForbiddenError      # 403 permission denied
+)
+
+try:
+    agent = client.agents.get_agent("invalid-id")
+except NotFoundError as e:
+    print(f"Agent not found: {e.message}")
+except UnauthorizedError as e:
+    print(f"Invalid API key: {e.message}")
+except ValidationError as e:
+    print(f"Validation errors: {e.errors}")
+except APIError as e:
+    print(f"API error: {e.message}")
 ```
 
 ### Type Hints

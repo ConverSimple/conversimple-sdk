@@ -48,6 +48,8 @@ setup(
         "websockets>=12.0",
         "aiofiles>=23.0",
         "aiohttp>=3.8.0",
+        "httpx>=0.24.0",
+        "pydantic>=2.0",
     ],
     extras_require={
         "dev": [

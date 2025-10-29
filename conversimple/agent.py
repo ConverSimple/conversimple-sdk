@@ -21,6 +21,7 @@ from .connection import WebSocketConnection
 from .tools import ToolRegistry, ToolCall, auto_register_tools
 from .callbacks import CallbackManager
 from .utils import setup_logging
+from .config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +38,12 @@ class ConversimpleAgent:
         self,
         api_key: str,
         customer_id: Optional[str] = None,
-        platform_url: str = "ws://localhost:4000/sdk/websocket",
+        platform_url: Optional[str] = None,
         max_reconnect_attempts: Optional[int] = None,
-        reconnect_backoff: float = 2.0,
-        max_backoff: float = 300.0,
+        reconnect_backoff: Optional[float] = None,
+        max_backoff: Optional[float] = None,
         total_retry_duration: Optional[float] = None,
-        enable_circuit_breaker: bool = True
+        enable_circuit_breaker: Optional[bool] = None
     ):
         """
         Initialize Conversimple agent with enhanced connection resilience.
@@ -59,18 +60,45 @@ class ConversimpleAgent:
         """
         self.api_key = api_key
         self.customer_id = customer_id or self._derive_customer_id(api_key)
-        self.platform_url = platform_url
+        self.platform_url = platform_url or Config.PLATFORM_URL
+
+        # Apply config defaults for connection settings
+        _max_reconnect_attempts = (
+            max_reconnect_attempts
+            if max_reconnect_attempts is not None
+            else Config.MAX_RECONNECT_ATTEMPTS
+        )
+        _reconnect_backoff = (
+            reconnect_backoff
+            if reconnect_backoff is not None
+            else Config.RECONNECT_BACKOFF
+        )
+        _max_backoff = (
+            max_backoff
+            if max_backoff is not None
+            else Config.MAX_BACKOFF
+        )
+        _total_retry_duration = (
+            total_retry_duration
+            if total_retry_duration is not None
+            else Config.TOTAL_RETRY_DURATION
+        )
+        _enable_circuit_breaker = (
+            enable_circuit_breaker
+            if enable_circuit_breaker is not None
+            else Config.ENABLE_CIRCUIT_BREAKER
+        )
 
         # Core components
         self.connection = WebSocketConnection(
-            url=platform_url,
+            url=self.platform_url,
             api_key=api_key,
             customer_id=self.customer_id,
-            max_reconnect_attempts=max_reconnect_attempts,
-            reconnect_backoff=reconnect_backoff,
-            max_backoff=max_backoff,
-            total_retry_duration=total_retry_duration,
-            enable_circuit_breaker=enable_circuit_breaker
+            max_reconnect_attempts=_max_reconnect_attempts,
+            reconnect_backoff=_reconnect_backoff,
+            max_backoff=_max_backoff,
+            total_retry_duration=_total_retry_duration,
+            enable_circuit_breaker=_enable_circuit_breaker
         )
         self.tool_registry = ToolRegistry()
         self.callback_manager = CallbackManager()

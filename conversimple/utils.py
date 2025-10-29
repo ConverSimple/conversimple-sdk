@@ -12,6 +12,8 @@ import os
 import sys
 from typing import Optional
 
+from .config import Config
+
 
 def setup_logging(
     level: Optional[str] = None,
@@ -53,8 +55,8 @@ def get_environment_config() -> dict:
         "api_key": os.getenv("CONVERSIMPLE_API_KEY"),
         "customer_id": os.getenv("CONVERSIMPLE_CUSTOMER_ID"),
         "platform_url": os.getenv(
-            "CONVERSIMPLE_PLATFORM_URL", 
-            "ws://localhost:4000/sdk/websocket"
+            "CONVERSIMPLE_PLATFORM_URL",
+            Config.PLATFORM_URL
         ),
         "log_level": os.getenv("CONVERSIMPLE_LOG_LEVEL", "INFO"),
         "heartbeat_interval": int(os.getenv("CONVERSIMPLE_HEARTBEAT_INTERVAL", "30")),
@@ -63,7 +65,7 @@ def get_environment_config() -> dict:
 
 
 # Constants
-DEFAULT_PLATFORM_URL = "ws://localhost:4000/sdk/websocket"
+DEFAULT_PLATFORM_URL = Config.PLATFORM_URL
 DEFAULT_HEARTBEAT_INTERVAL = 30
 DEFAULT_MAX_RECONNECT_ATTEMPTS = 5
 DEFAULT_TOOL_TIMEOUT = 30

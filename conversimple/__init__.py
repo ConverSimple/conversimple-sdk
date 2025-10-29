@@ -14,17 +14,50 @@ from .callbacks import (
     ErrorEvent,
     ConfigUpdateEvent
 )
+from .api import (
+    PlatformClient,
+    Agent,
+    Deployment,
+    ApiKeyInfo,
+    ApiKeyUsage,
+    ListResponse,
+    APIError,
+    ValidationError,
+    NotFoundError,
+    UnauthorizedError,
+    ForbiddenError,
+)
+from .config import Config
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 __all__ = [
+    # Configuration
+    "Config",
+    # Agent execution
     "ConversimpleAgent",
-    "tool", 
+    "tool",
     "tool_async",
+    # Event callbacks
     "ConversationLifecycleEvent",
-    "ToolCallEvent", 
+    "ToolCallEvent",
     "ErrorEvent",
     "ConfigUpdateEvent",
+    # Dispatcher
     "AgentRegistry",
     "ConversimpleDispatcher",
     "run_dispatcher",
+    # Platform API client
+    "PlatformClient",
+    # API models
+    "Agent",
+    "Deployment",
+    "ApiKeyInfo",
+    "ApiKeyUsage",
+    "ListResponse",
+    # API exceptions
+    "APIError",
+    "ValidationError",
+    "NotFoundError",
+    "UnauthorizedError",
+    "ForbiddenError",
 ]
