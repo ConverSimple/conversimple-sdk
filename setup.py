@@ -16,7 +16,7 @@ except FileNotFoundError:
 
 setup(
     name="conversimple-sdk",
-    version="0.2.0",  # Enhanced connection resilience with circuit breaker
+    version="0.2.2",  # Enhanced connection resilience with circuit breaker
     author="Conversimple",
     author_email="support@conversimple.com",
     description="Python SDK for Conversimple Conversational AI Platform",
