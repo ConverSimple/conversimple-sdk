@@ -37,7 +37,6 @@ class ConversimpleAgent:
     def __init__(
         self,
         api_key: str,
-        customer_id: Optional[str] = None,
         platform_url: Optional[str] = None,
         max_reconnect_attempts: Optional[int] = None,
         reconnect_backoff: Optional[float] = None,
@@ -50,7 +49,6 @@ class ConversimpleAgent:
 
         Args:
             api_key: Customer authentication token
-            customer_id: Customer identifier (derived from API key if not provided)
             platform_url: WebSocket URL for platform connection
             max_reconnect_attempts: Maximum reconnection attempts (None = infinite, recommended for production)
             reconnect_backoff: Base backoff multiplier for exponential backoff (default: 2.0)
@@ -59,7 +57,6 @@ class ConversimpleAgent:
             enable_circuit_breaker: Enable circuit breaker for permanent failures (default: True)
         """
         self.api_key = api_key
-        self.customer_id = customer_id or self._derive_customer_id(api_key)
         self.platform_url = platform_url or Config.PLATFORM_URL
 
         # Apply config defaults for connection settings
@@ -93,7 +90,6 @@ class ConversimpleAgent:
         self.connection = WebSocketConnection(
             url=self.platform_url,
             api_key=api_key,
-            customer_id=self.customer_id,
             max_reconnect_attempts=_max_reconnect_attempts,
             reconnect_backoff=_reconnect_backoff,
             max_backoff=_max_backoff,
@@ -114,13 +110,6 @@ class ConversimpleAgent:
         
         # Setup logging
         setup_logging()
-
-    def _derive_customer_id(self, api_key: str) -> str:
-        """Derive customer ID from API key if not provided."""
-        # In production, this would decode/validate the API key
-        # For now, use a hash-based approach
-        import hashlib
-        return hashlib.md5(api_key.encode()).hexdigest()[:12]
 
     async def start(self, conversation_id: Optional[str] = None) -> None:
         """

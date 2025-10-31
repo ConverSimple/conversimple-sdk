@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 import time
+import uuid
 from typing import Dict, Optional, Callable, Any
 from urllib.parse import urlencode
 
@@ -50,7 +51,6 @@ class WebSocketConnection:
         self,
         url: str,
         api_key: str,
-        customer_id: str,
         heartbeat_interval: int = 30,
         max_reconnect_attempts: Optional[int] = None,
         reconnect_backoff: float = 2.0,
@@ -64,7 +64,6 @@ class WebSocketConnection:
         Args:
             url: WebSocket URL for platform connection
             api_key: Customer authentication token
-            customer_id: Customer identifier
             heartbeat_interval: Heartbeat interval in seconds (default: 30)
             max_reconnect_attempts: Maximum reconnection attempts (None = infinite, default: None for production)
             reconnect_backoff: Base backoff multiplier for exponential backoff (default: 2.0)
@@ -74,7 +73,7 @@ class WebSocketConnection:
         """
         self.url = url
         self.api_key = api_key
-        self.customer_id = customer_id
+        self.session_id = str(uuid.uuid4())
         self.heartbeat_interval = heartbeat_interval
         self.max_reconnect_attempts = max_reconnect_attempts
         self.reconnect_backoff = reconnect_backoff
@@ -114,13 +113,12 @@ class WebSocketConnection:
     async def connect(self) -> None:
         """Connect to the platform WebSocket."""
         connection_params = {
-            "customer_id": self.customer_id,
             "auth_token": self.api_key
         }
-        
+
         connection_url = f"{self.url}?{urlencode(connection_params)}"
-        
-        logger.info(f"Connecting to platform: {self.customer_id}")
+
+        logger.info(f"Connecting to platform with session: {self.session_id}")
         
         try:
             self.websocket = await websockets.connect(
@@ -173,12 +171,12 @@ class WebSocketConnection:
         if not self.connected or not self.channel_joined:
             logger.warning(f"Cannot send message {event}: not connected")
             return
-            
+
         # WebSocket message format (as JSON object)
         message = {
             "join_ref": None,  # join_ref (not used for regular messages)
             "ref": self._next_message_ref(),
-            "topic": f"customer:{self.customer_id}",
+            "topic": f"customer:{self.session_id}",
             "event": event,
             "payload": payload
         }
@@ -195,17 +193,17 @@ class WebSocketConnection:
         """Join the customer channel using WebSocket protocol."""
         join_ref = self._next_message_ref()
         message_ref = self._next_message_ref()
-        
+
         # WebSocket channel join message (as JSON object)
         message = {
             "join_ref": join_ref,
             "ref": message_ref,
-            "topic": f"customer:{self.customer_id}",
+            "topic": f"customer:{self.session_id}",
             "event": "phx_join",
             "payload": {}
         }
-        
-        logger.info(f"Joining channel: customer:{self.customer_id}")
+
+        logger.info(f"Joining channel: customer:{self.session_id}")
         
         try:
             await self.websocket.send(json.dumps(message))

@@ -158,11 +158,9 @@ class ConversimpleDispatcher:
         api_key: str,
         platform_url: Optional[str] = None,
         search_path: Optional[Path] = None,
-        customer_id: Optional[str] = None,
     ):
         self.api_key = api_key
         self.platform_url = platform_url or Config.PLATFORM_URL
-        self.customer_id = customer_id
         self.search_path = search_path or Path.cwd()
 
         self.registry = AgentRegistry(self.search_path)
@@ -171,7 +169,6 @@ class ConversimpleDispatcher:
         self.connection = WebSocketConnection(
             url=self.platform_url,
             api_key=self.api_key,
-            customer_id=self.customer_id or self._derive_customer_id(api_key),
             max_reconnect_attempts=None,
         )
         self.connection.set_message_handler(self._handle_platform_message)
@@ -233,7 +230,6 @@ class ConversimpleDispatcher:
 
         agent_instance = registered.cls(
             api_key=self.api_key,
-            customer_id=self.customer_id,
             platform_url=self.platform_url,
         )
 
@@ -300,13 +296,6 @@ class ConversimpleDispatcher:
             logger.error("Dispatcher encountered permanent error: %s", data)
         elif event == "error":
             logger.error("Dispatcher connection error: %s", data)
-
-    def _derive_customer_id(self, api_key: str) -> str:
-        """Reuse agent hashing logic to derive customer id."""
-        import hashlib
-
-        return hashlib.md5(api_key.encode()).hexdigest()[:12]
-
 
 async def run_dispatcher(api_key: str, platform_url: str, search_path: Optional[Path] = None) -> None:
     """Convenience helper to run dispatcher until interrupted."""
